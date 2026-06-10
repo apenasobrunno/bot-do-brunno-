@@ -10,7 +10,8 @@ const {
 const fs = require("fs");
 
 // CONFIGURE AQUI
-const TOKEN = process.env.TOKEN || "MTUxNDM4ODA2NzYzNTU2MDYwMQ.GqSkcC.rBLwjWsZt2TI4PE2O23I0UglJDBwsFpYplNTE4";
+const TOKEN = process.env.TOKEN || "MTUxNDM4ODA2NzYzNTU2MDYwMQ.GqSkcC.rBLwjWsZt2TI4PE2O23I0UglJDBwsFpYplNTE4
+";
 const CLIENT_ID = process.env.CLIENT_ID || "1514388067635560601";
 
 // Verificações
