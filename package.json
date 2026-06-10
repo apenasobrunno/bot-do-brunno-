@@ -1,24 +1,12 @@
 {
   "name": "bot-salas-freefire",
   "version": "1.0.0",
-  "description": "Bot Discord para criar salas Free Fire",
   "main": "index.js",
   "scripts": {
-    "start": "node index.js",
-    "dev": "node index.js"
+    "start": "node index.js"
   },
-  "keywords": [
-    "discord",
-    "freefire",
-    "bot"
-  ],
-  "author": "SeuNome",
-  "license": "MIT",
   "dependencies": {
-    "axios": "^1.11.0",
-    "discord.js": "^14.21.0"
-  },
-  "engines": {
-    "node": ">=18.0.0"
+    "discord.js": "^14.21.0",
+    "dotenv": "^16.4.5"
   }
 }
