@@ -1,12 +1,12 @@
 require("dotenv").config();
 
 const {
-    Client,
-    GatewayIntentBits,
-    REST,
-    Routes,
-    SlashCommandBuilder,
-    PermissionFlagsBits
+  Client,
+  GatewayIntentBits,
+  REST,
+  Routes,
+  SlashCommandBuilder,
+  PermissionFlagsBits
 } = require("discord.js");
 
 const fs = require("fs");
@@ -14,161 +14,149 @@ const fs = require("fs");
 const TOKEN = process.env.TOKEN;
 const CLIENT_ID = process.env.CLIENT_ID;
 
+// CHECKS
 if (!TOKEN) {
-    console.log("❌ TOKEN não encontrado no .env");
-    process.exit(1);
+  console.log("❌ TOKEN não encontrado no .env");
+  process.exit(1);
 }
 
 if (!CLIENT_ID) {
-    console.log("❌ CLIENT_ID não encontrado no .env");
-    process.exit(1);
+  console.log("❌ CLIENT_ID não encontrado no .env");
+  process.exit(1);
+}
+
+// CONFIG
+if (!fs.existsSync("./config.json")) {
+  fs.writeFileSync(
+    "./config.json",
+    JSON.stringify({
+      nomeSala: "SALA CUSTOM",
+      tempoGo: 10,
+      apiKey: ""
+    }, null, 2)
+  );
 }
 
 function loadConfig() {
-    return JSON.parse(fs.readFileSync("./config.json", "utf8"));
+  return JSON.parse(fs.readFileSync("./config.json"));
 }
 
 function saveConfig(data) {
-    fs.writeFileSync(
-        "./config.json",
-        JSON.stringify(data, null, 2)
-    );
+  fs.writeFileSync("./config.json", JSON.stringify(data, null, 2));
 }
 
+// CLIENT
 const client = new Client({
-    intents: [GatewayIntentBits.Guilds]
+  intents: [GatewayIntentBits.Guilds]
 });
 
+// COMMANDS
 const commands = [
-    new SlashCommandBuilder()
-        .setName("criar")
-        .setDescription("Criar sala"),
+  new SlashCommandBuilder()
+    .setName("criar")
+    .setDescription("Criar sala"),
 
-    new SlashCommandBuilder()
-        .setName("config")
-        .setDescription("Configurar bot")
-        .setDefaultMemberPermissions(
-            PermissionFlagsBits.Administrator
+  new SlashCommandBuilder()
+    .setName("config")
+    .setDescription("Configurar bot")
+    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
+    .addSubcommand(sub =>
+      sub.setName("nome")
+        .setDescription("Mudar nome da sala")
+        .addStringOption(opt =>
+          opt.setName("valor")
+            .setDescription("Novo nome")
+            .setRequired(true)
         )
-
-        .addSubcommand(sub =>
-            sub
-                .setName("nome")
-                .setDescription("Alterar nome da sala")
-                .addStringOption(opt =>
-                    opt
-                        .setName("valor")
-                        .setDescription("Novo nome")
-                        .setRequired(true)
-                )
+    )
+    .addSubcommand(sub =>
+      sub.setName("tempo")
+        .setDescription("Tempo do GO")
+        .addIntegerOption(opt =>
+          opt.setName("valor")
+            .setDescription("Minutos")
+            .setRequired(true)
         )
-
-        .addSubcommand(sub =>
-            sub
-                .setName("tempo")
-                .setDescription("Alterar tempo do GO")
-                .addIntegerOption(opt =>
-                    opt
-                        .setName("valor")
-                        .setDescription("Minutos")
-                        .setRequired(true)
-                )
+    )
+    .addSubcommand(sub =>
+      sub.setName("key")
+        .setDescription("API Key")
+        .addStringOption(opt =>
+          opt.setName("valor")
+            .setDescription("Sua key")
+            .setRequired(true)
         )
+    )
+].map(c => c.toJSON());
 
-        .addSubcommand(sub =>
-            sub
-                .setName("key")
-                .setDescription("Salvar API KEY")
-                .addStringOption(opt =>
-                    opt
-                        .setName("valor")
-                        .setDescription("Sua API KEY")
-                        .setRequired(true)
-                )
-        )
-].map(cmd => cmd.toJSON());
-
+// REGISTER COMMANDS
 async function registerCommands() {
+  try {
     const rest = new REST({ version: "10" }).setToken(TOKEN);
 
     await rest.put(
-        Routes.applicationCommands(CLIENT_ID),
-        {
-            body: commands
-        }
+      Routes.applicationCommands(CLIENT_ID),
+      { body: commands }
     );
 
-    console.log("✅ Comandos registrados");
+    console.log("✅ Slash commands registrados");
+  } catch (err) {
+    console.error("❌ Erro ao registrar comandos:", err);
+  }
 }
 
+// READY
 client.once("ready", () => {
-    console.log(`✅ Online como ${client.user.tag}`);
+  console.log(`✅ Online como ${client.user.tag}`);
 });
 
+// INTERACTIONS
 client.on("interactionCreate", async interaction => {
+  if (!interaction.isChatInputCommand()) return;
 
-    if (!interaction.isChatInputCommand()) return;
+  const config = loadConfig();
 
-    const config = loadConfig();
+  // CONFIG
+  if (interaction.commandName === "config") {
+    const sub = interaction.options.getSubcommand();
 
-    if (interaction.commandName === "config") {
+    if (sub === "nome") {
+      config.nomeSala = interaction.options.getString("valor");
+      saveConfig(config);
 
-        const sub = interaction.options.getSubcommand();
-
-        if (sub === "nome") {
-
-            const valor =
-                interaction.options.getString("valor");
-
-            config.nomeSala = valor;
-            saveConfig(config);
-
-            return interaction.reply({
-                content: `✅ Nome alterado para ${valor}`,
-                ephemeral: true
-            });
-        }
-
-        if (sub === "tempo") {
-
-            const valor =
-                interaction.options.getInteger("valor");
-
-            config.tempoGo = valor;
-            saveConfig(config);
-
-            return interaction.reply({
-                content: `✅ GO definido para ${valor} minutos`,
-                ephemeral: true
-            });
-        }
-
-        if (sub === "key") {
-
-            const valor =
-                interaction.options.getString("valor");
-
-            config.apiKey = valor;
-            saveConfig(config);
-
-            return interaction.reply({
-                content: "✅ API KEY salva.",
-                ephemeral: true
-            });
-        }
+      return interaction.reply({
+        content: `✅ Nome atualizado: ${config.nomeSala}`,
+        ephemeral: true
+      });
     }
 
-    if (interaction.commandName === "criar") {
+    if (sub === "tempo") {
+      config.tempoGo = interaction.options.getInteger("valor");
+      saveConfig(config);
 
-        const codigo = Math.floor(
-            100000 + Math.random() * 900000
-        );
+      return interaction.reply({
+        content: `✅ Tempo GO: ${config.tempoGo} min`,
+        ephemeral: true
+      });
+    }
 
-        const senha = Math.floor(
-            1000 + Math.random() * 9000
-        );
+    if (sub === "key") {
+      config.apiKey = interaction.options.getString("valor");
+      saveConfig(config);
 
-        await interaction.reply(
+      return interaction.reply({
+        content: `✅ API Key salva`,
+        ephemeral: true
+      });
+    }
+  }
+
+  // CRIAR SALA
+  if (interaction.commandName === "criar") {
+    const codigo = Math.floor(100000 + Math.random() * 900000);
+    const senha = Math.floor(1000 + Math.random() * 9000);
+
+    await interaction.reply(
 `🏆 Sala criada
 
 📛 Nome: ${config.nomeSala}
@@ -176,33 +164,22 @@ client.on("interactionCreate", async interaction => {
 🔒 Senha: ${senha}
 
 ⏰ GO em ${config.tempoGo} minutos`
-        );
+    );
 
-        setTimeout(async () => {
-
-            try {
-
-                await interaction.followUp(
-                    `🚀 GO LIBERADO!\n📛 ${config.nomeSala}`
-                );
-
-            } catch {}
-        }, config.tempoGo * 60000);
-    }
+    setTimeout(() => {
+      interaction.followUp(
+        `🚀 GO LIBERADO!\n📛 ${config.nomeSala}`
+      ).catch(() => {});
+    }, config.tempoGo * 60000);
+  }
 });
 
+// ERRORS
+process.on("unhandledRejection", console.error);
+process.on("uncaughtException", console.error);
+
+// START
 (async () => {
-
-    try {
-
-        await registerCommands();
-
-        await client.login(TOKEN);
-
-    } catch (err) {
-
-        console.error("❌ Erro:");
-        console.error(err);
-    }
-
+  await registerCommands();
+  await client.login(TOKEN);
 })();
