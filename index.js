@@ -1,61 +1,68 @@
 const {
   Client,
   GatewayIntentBits,
-  SlashCommandBuilder,
   REST,
-  Routes
+  Routes,
+  SlashCommandBuilder,
+  PermissionFlagsBits
 } = require("discord.js");
 
-const fs = require("fs");
 const axios = require("axios");
+const fs = require("fs");
 
-const TOKEN = "SEU_TOKEN_BOT";
-const CLIENT_ID = "ID_DO_BOT";
-
-// SUA API KEY
-const API_KEY = "SUA_KEY_AQUI";
-
-// CONFIG PADRÃO
-let config = {
-  tempoGo: 10,
-  nomeSala: "SALA PREMIADA"
-};
-
-if (fs.existsSync("./config.json")) {
-  config = JSON.parse(fs.readFileSync("./config.json"));
-}
-
-function salvarConfig() {
-  fs.writeFileSync("./config.json", JSON.stringify(config, null, 2));
-}
+const TOKEN = "MTUxNDM4ODA2NzYzNTU2MDYwMQ.GqSkcC.rBLwjWsZt2TI4PE2O23I0UglJDBwsFpYplNTE4";
+const CLIENT_ID = "1514388067635560601";
 
 const client = new Client({
   intents: [GatewayIntentBits.Guilds]
 });
 
+function loadConfig() {
+  return JSON.parse(fs.readFileSync("./config.json"));
+}
+
+function saveConfig(data) {
+  fs.writeFileSync("./config.json", JSON.stringify(data, null, 2));
+}
+
 const commands = [
   new SlashCommandBuilder()
     .setName("criar")
-    .setDescription("Criar sala Free Fire"),
+    .setDescription("Criar uma sala"),
 
   new SlashCommandBuilder()
     .setName("config")
-    .setDescription("Configurar sala")
-    .addStringOption(option =>
-      option
-        .setName("tipo")
-        .setDescription("tempo ou nome")
-        .setRequired(true)
-        .addChoices(
-          { name: "tempo", value: "tempo" },
-          { name: "nome", value: "nome" }
+    .setDescription("Configurações do bot")
+    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
+    .addSubcommand(sub =>
+      sub
+        .setName("nome")
+        .setDescription("Alterar nome da sala")
+        .addStringOption(opt =>
+          opt.setName("valor")
+            .setDescription("Novo nome")
+            .setRequired(true)
         )
     )
-    .addStringOption(option =>
-      option
-        .setName("valor")
-        .setDescription("Novo valor")
-        .setRequired(true)
+    .addSubcommand(sub =>
+      sub
+        .setName("tempo")
+        .setDescription("Alterar tempo do GO")
+        .addIntegerOption(opt =>
+          opt.setName("valor")
+            .setDescription("Tempo em minutos")
+            .setRequired(true)
+        )
+    )
+    .addSubcommand(sub =>
+      sub
+        .setName("key")
+        .setDescription("Definir API KEY")
+        .addStringOption(opt =>
+          opt.setName("valor")
+            .setDescription("Sua API Key")
+            .setRequired(true)
+        )
     )
 ].map(cmd => cmd.toJSON());
 
@@ -67,75 +74,109 @@ const commands = [
     { body: commands }
   );
 
-  console.log("Slash commands carregados.");
+  console.log("Comandos registrados.");
 })();
+
+client.once("ready", () => {
+  console.log(`Logado como ${client.user.tag}`);
+});
 
 client.on("interactionCreate", async interaction => {
   if (!interaction.isChatInputCommand()) return;
 
+  const config = loadConfig();
+
   if (interaction.commandName === "config") {
-    const tipo = interaction.options.getString("tipo");
-    const valor = interaction.options.getString("valor");
 
-    if (tipo === "tempo") {
-      config.tempoGo = parseInt(valor);
-      salvarConfig();
+    const sub = interaction.options.getSubcommand();
 
-      return interaction.reply(
-        `✅ Tempo GO definido para ${valor} minutos`
-      );
+    if (sub === "nome") {
+      const valor = interaction.options.getString("valor");
+
+      config.nomeSala = valor;
+      saveConfig(config);
+
+      return interaction.reply({
+        content: `✅ Nome da sala alterado para: ${valor}`,
+        ephemeral: true
+      });
     }
 
-    if (tipo === "nome") {
-      config.nomeSala = valor;
-      salvarConfig();
+    if (sub === "tempo") {
+      const valor = interaction.options.getInteger("valor");
 
-      return interaction.reply(
-        `✅ Nome da sala alterado para: ${valor}`
-      );
+      config.tempoGo = valor;
+      saveConfig(config);
+
+      return interaction.reply({
+        content: `✅ Tempo GO definido para ${valor} minutos`,
+        ephemeral: true
+      });
+    }
+
+    if (sub === "key") {
+      const valor = interaction.options.getString("valor");
+
+      config.apiKey = valor;
+      saveConfig(config);
+
+      return interaction.reply({
+        content: `✅ API KEY salva.`,
+        ephemeral: true
+      });
     }
   }
 
   if (interaction.commandName === "criar") {
+
     await interaction.reply("⏳ Criando sala...");
 
     try {
 
-      // TROCAR PELO ENDPOINT CORRETO DA API
-      const response = await axios.post(
-        "https://api.exemplo.com/criar-sala",
+      /*
+      COLOQUE AQUI A API REAL
+
+      Exemplo:
+
+      const sala = await axios.post(
+        "URL_DA_API",
         {
           nome: config.nomeSala
         },
         {
           headers: {
-            Authorization: API_KEY
+            Authorization: config.apiKey
           }
         }
       );
+      */
 
-      const sala = response.data;
+      const salaFake = {
+        codigo: "123456",
+        senha: "7890"
+      };
 
-      await interaction.editReply(`
-🏆 Sala criada!
+      await interaction.editReply(
+`🏆 Sala criada
 
 📛 Nome: ${config.nomeSala}
-🔑 Código: ${sala.codigo}
-🔒 Senha: ${sala.senha}
+🔑 Código: ${salaFake.codigo}
+🔒 Senha: ${salaFake.senha}
 
-⏰ GO em ${config.tempoGo} minutos
-      `);
+⏰ GO em ${config.tempoGo} minutos`
+      );
 
       setTimeout(async () => {
-        interaction.followUp(
-          `🚀 GO LIBERADO!\nSala: ${config.nomeSala}`
+        await interaction.followUp(
+          `🚀 GO LIBERADO!\n📛 ${config.nomeSala}`
         );
       }, config.tempoGo * 60 * 1000);
 
     } catch (err) {
-      console.log(err);
 
-      await interaction.editReply(
+      console.error(err);
+
+      interaction.editReply(
         "❌ Erro ao criar sala."
       );
     }
